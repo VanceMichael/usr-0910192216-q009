@@ -1,0 +1,23 @@
+services:
+  app:
+    build: .
+    environment:
+      DATABASE_URL: postgres://app:app@db:5432/sharing
+    ports: ["8080:8080"]
+    depends_on:
+      db:
+        condition: service_healthy
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: sharing
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app
+    volumes: ["postgres_data:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d sharing"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+volumes:
+  postgres_data:
