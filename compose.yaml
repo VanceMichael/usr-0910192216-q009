@@ -1,23 +1,85 @@
+# 文化产品收益分账账本 —— 一体化编排
+#
+# 启动顺序：db（健康检查通过）-> migrate（迁移完成退出）-> seed（幂等种子）
+#          -> app（持续运行，崩溃自动重启以演示故障恢复）
+# 数据持久化在命名卷 postgres_data。
 services:
-  app:
-    build: .
-    environment:
-      DATABASE_URL: postgres://app:app@db:5432/sharing
-    ports: ["8080:8080"]
-    depends_on:
-      db:
-        condition: service_healthy
   db:
     image: postgres:16-alpine
     environment:
       POSTGRES_DB: sharing
       POSTGRES_USER: app
       POSTGRES_PASSWORD: app
-    volumes: ["postgres_data:/var/lib/postgresql/data"]
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U app -d sharing"]
       interval: 5s
       timeout: 3s
-      retries: 10
+      retries: 12
+    restart: unless-stopped
+
+  migrate:
+    build: .
+    command: ["migrate"]
+    environment:
+      DATABASE_URL: postgres://app:app@db:5432/sharing
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  seed:
+    build: .
+    command: ["seed"]
+    environment:
+      DATABASE_URL: postgres://app:app@db:5432/sharing
+      RULES_FILE: /contracts/分账规则.json
+      VERSIONS_FILE: /contracts/versions.json
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: "no"
+
+  app:
+    build: .
+    command: ["serve"]
+    environment:
+      DATABASE_URL: postgres://app:app@db:5432/sharing
+      LISTEN_ADDR: :8080
+      PLATFORM_ID: platform:ops
+      LEDGER_FAULT_HOOKS: "1"   # 演示故障注入；生产置空
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8080/healthz"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      seed:
+        condition: service_completed_successfully
+    restart: unless-stopped   # 故障注入后自动恢复，继续接受新的审计序号
+
+  # 离线校验器：按需运行（docker compose run --rm verify），
+  # 校验哈希链、借贷平衡与重放一致性，失败时退出码非零。
+  verify:
+    build: .
+    command: ["verify"]
+    environment:
+      DATABASE_URL: postgres://app:app@db:5432/sharing
+      PLATFORM_ID: platform:ops
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    restart: "no"
+    profiles: ["audit"]
+
 volumes:
   postgres_data:

@@ -1,1 +1,76 @@
-[{"type":"order","order_id":"O-01","product_group":"tea","occurred_at":"2026-09-09T23:50:00+08:00","amount":"800.00"}]
+{
+  "comment": "演示分账争议场景的完整事件流。steps 按序执行：ingest 调 POST /v1/events，confirm 调 POST /v1/settlements/confirm。固定 event_id 使重复执行幂等。",
+  "steps": [
+    {
+      "name": "O-01 订单 800.00（09-09 23:50，合同 v1 周期）",
+      "ingest": {
+        "event_id": "11111111-1111-4111-8111-111111111101",
+        "type": "order",
+        "region_code": "CN-SH",
+        "order_id": "O-01",
+        "occurred_at": "2026-09-09T23:50:00+08:00",
+        "payload": {"product_group": "tea", "amount": "800.00", "creator_id": "creator:li", "coop_id": "coop:tea", "channel_id": "channel:mall"}
+      }
+    },
+    {
+      "name": "O-02 订单 1200.00（09-10 00:10，跨午夜进入切换日，合同 v2）",
+      "ingest": {
+        "event_id": "11111111-1111-4111-8111-111111111102",
+        "type": "order",
+        "region_code": "CN-SH",
+        "order_id": "O-02",
+        "occurred_at": "2026-09-10T00:10:00+08:00",
+        "payload": {"product_group": "tea", "amount": "1200.00", "creator_id": "creator:li", "coop_id": "coop:tea", "channel_id": "channel:mall"}
+      }
+    },
+    {
+      "name": "R-01 退货：O-01 全额退回（09-10 00:05，跨午夜归入 09-10 周期，独立冲正）",
+      "ingest": {
+        "event_id": "11111111-1111-4111-8111-111111111103",
+        "type": "return",
+        "region_code": "CN-SH",
+        "order_id": "O-01",
+        "occurred_at": "2026-09-10T00:05:00+08:00",
+        "payload": {"product_group": "tea", "amount": "800.00", "creator_id": "creator:li", "coop_id": "coop:tea", "channel_id": "channel:mall"}
+      }
+    },
+    {
+      "name": "O-03 订单 500.00 丝绸（09-10 08:00，费率 3%）",
+      "ingest": {
+        "event_id": "11111111-1111-4111-8111-111111111104",
+        "type": "order",
+        "region_code": "CN-SH",
+        "order_id": "O-03",
+        "occurred_at": "2026-09-10T08:00:00+08:00",
+        "payload": {"product_group": "silk", "amount": "500.00", "creator_id": "creator:li", "coop_id": "coop:tea", "channel_id": "channel:mall"}
+      }
+    },
+    {
+      "name": "确认 09-09 周期结算（只含 O-01，合同 v1）",
+      "confirm": {"confirmation_id": "22222222-2222-4222-8222-222222222201", "region_code": "CN-SH", "period": "2026-09-09"}
+    },
+    {
+      "name": "重复确认 09-09（同一 confirmation_id，幂等，只产生一次分账指令）",
+      "confirm": {"confirmation_id": "22222222-2222-4222-8222-222222222201", "region_code": "CN-SH", "period": "2026-09-09"}
+    },
+    {
+      "name": "O-00 迟到订单：发生于 09-09 10:00 但周期已关闭（late=true，可审计不计入）",
+      "ingest": {
+        "event_id": "11111111-1111-4111-8111-111111111105",
+        "type": "order",
+        "region_code": "CN-SH",
+        "order_id": "O-00",
+        "occurred_at": "2026-09-09T10:00:00+08:00",
+        "payload": {"product_group": "tea", "amount": "200.00", "creator_id": "creator:li", "coop_id": "coop:tea", "channel_id": "channel:mall"}
+      }
+    },
+    {
+      "name": "确认 09-10 周期结算（O-02/O-03 销售腿用 v2，R-01 冲正腿按原订单 v1 冲回）",
+      "confirm": {"confirmation_id": "22222222-2222-4222-8222-222222222202", "region_code": "CN-SH", "period": "2026-09-10"}
+    },
+    {
+      "name": "用不同 confirmation_id 重复确认 09-10（应 409 冲突，周期已被占用）",
+      "confirm": {"confirmation_id": "22222222-2222-4222-8222-222222222299", "region_code": "CN-SH", "period": "2026-09-10"}
+    }
+  ]
+}

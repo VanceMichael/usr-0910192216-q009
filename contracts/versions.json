@@ -1,0 +1,34 @@
+{
+  "regions": [
+    {"code": "CN-SH", "timezone": "Asia/Shanghai"}
+  ],
+  "participants": [
+    {"id": "creator:li",   "kind": "creator",     "display_name": "李作（创作者）", "token": "dev-creator-token"},
+    {"id": "coop:tea",     "kind": "cooperative", "display_name": "云雾茶农合作社", "token": "dev-coop-token"},
+    {"id": "channel:mall", "kind": "channel",     "display_name": "云商渠道",       "token": "dev-channel-token"},
+    {"id": "platform:ops", "kind": "platform",    "display_name": "平台运营户",     "token": "dev-platform-token"},
+    {"id": "auditor:main", "kind": "auditor",     "display_name": "审计员",         "token": "dev-auditor-token"},
+    {"id": "admin:main",   "kind": "admin",       "display_name": "账本管理员",     "token": "dev-admin-token"}
+  ],
+  "contracts": [
+    {
+      "contract_no": "C-2026",
+      "version": 1,
+      "effective_from": "2026-09-01",
+      "terms": {"creator_bps": 4500, "coop_bps": 3500, "platform_bps": 2000},
+      "registered_at": "2026-08-30T10:00:00+08:00"
+    },
+    {
+      "contract_no": "C-2026",
+      "version": 2,
+      "effective_from": "2026-09-10",
+      "terms": {"creator_bps": 5000, "coop_bps": 3000, "platform_bps": 2000},
+      "registered_at": "2026-09-05T10:00:00+08:00"
+    }
+  ],
+  "channel_rates": [
+    {"channel_id": "channel:mall", "product_group": "tea",     "fee_rate": "0.0250", "effective_period": "2026-09-01", "registered_at": "2026-08-30T10:05:00+08:00"},
+    {"channel_id": "channel:mall", "product_group": "silk",    "fee_rate": "0.0300", "effective_period": "2026-09-01", "registered_at": "2026-08-30T10:05:00+08:00"},
+    {"channel_id": "channel:mall", "product_group": "ceramic", "fee_rate": "0.0200", "effective_period": "2026-09-01", "registered_at": "2026-08-30T10:05:00+08:00"}
+  ]
+}
